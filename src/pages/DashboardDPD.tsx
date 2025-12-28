@@ -8,24 +8,39 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { FileText, Users, CheckCircle2, LogOut } from "lucide-react";
+import { FileText, Users, CheckCircle2, LogOut, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import hanuraLogo from "@/assets/hanura-logo.jpg";
 import { checkAuth } from "@/lib/auth";
+import { LoadingScreen } from "@/components/ui/spinner";
 
 const DashboardDPD = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [dataMusda, setDataMusda] = useState<any>(null);
+  const [hasAdministrativeData, setHasAdministrativeData] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [organizationInfo, setOrganizationInfo] = useState<{
+    tipe: string;
+    nama: string;
+  }>({ tipe: "DPD", nama: "DPD" });
   const navigate = useNavigate();
 
   useEffect(() => {
     const verifyAuth = async () => {
-      const isAuthenticated = await checkAuth();
-      if (!isAuthenticated) {
+      try {
+        setLoading(true);
+        const isAuthenticated = await checkAuth();
+        if (!isAuthenticated) {
+          toast.error("Silakan login terlebih dahulu");
+          navigate("/auth");
+        }
+      } catch (error) {
         toast.error("Silakan login terlebih dahulu");
         navigate("/auth");
+      } finally {
+        setLoading(false);
       }
     };
     verifyAuth();
@@ -33,10 +48,48 @@ const DashboardDPD = () => {
 
   const fetchMusdaProgreess = async () => {
     try {
+      setLoading(true);
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
+
+      // Fetch user profile to get organization info
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("tipe_organisasi, provinsi, kabupaten_kota, kecamatan")
+        .eq("id", user.id)
+        .single();
+
+      if (profileData) {
+        const tipeOrganisasi = (profileData as any).tipe_organisasi;
+        const provinsi = (profileData as any).provinsi;
+        const kabupatenKota = (profileData as any).kabupaten_kota;
+        const kecamatan = (profileData as any).kecamatan;
+
+        let orgName = "";
+        let orgType = "DPD";
+
+        switch (tipeOrganisasi) {
+          case "dpd":
+            orgName = `DPD ${provinsi || ""}`;
+            orgType = "DPD";
+            break;
+          case "dpc":
+            orgName = `DPC ${kabupatenKota || ""}`;
+            orgType = "DPC";
+            break;
+          case "pac":
+            orgName = `PAC Kec. ${kecamatan || ""}`;
+            orgType = "PAC";
+            break;
+          default:
+            orgName = "DPD";
+            orgType = "DPD";
+        }
+
+        setOrganizationInfo({ tipe: orgType, nama: orgName });
+      }
 
       const { data, error } = await supabase
         .from("pengajuan_sk")
@@ -49,16 +102,47 @@ const DashboardDPD = () => {
       if (error) throw error;
 
       setDataMusda(data);
+
+      // Check if administrative data is complete
+      const [bankData, officeData, legalityData] = await Promise.all([
+        supabase
+          .from("dpd_bank_account" as any)
+          .select("*")
+          .eq("dpd_id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("dpd_office_address" as any)
+          .select("*")
+          .eq("dpd_id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("dpd_office_legality" as any)
+          .select("*")
+          .eq("dpd_id", user.id)
+          .maybeSingle(),
+      ]);
+
+      const hasComplete =
+        bankData.data &&
+        officeData.data &&
+        legalityData.data &&
+        (bankData.data as any).file_bukti_rekening &&
+        (officeData.data as any).file_foto_kantor_depan &&
+        (officeData.data as any).file_foto_papan_nama &&
+        (legalityData.data as any).file_dokumen_legalitas;
+
+      setHasAdministrativeData(Boolean(hasComplete));
     } catch (error) {
       console.error("Error loading pengajuan:", error);
       toast.error("Gagal memuat data pengajuan");
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchMusdaProgreess();
   }, []);
-  console.log(dataMusda);
 
   const currentStepFromData = useMemo(() => {
     const { tanggal_musda, lokasi_musda, file_laporan_musda, status } =
@@ -84,7 +168,7 @@ const DashboardDPD = () => {
     return 1;
   }, [dataMusda]);
 
-  const steps = [
+  const steps = useMemo(() => [
     {
       number: 1,
       title: "Upload Laporan MUSDA",
@@ -97,7 +181,7 @@ const DashboardDPD = () => {
     {
       number: 2,
       title: "Input Data Pengurus",
-      description: "Isi data lengkap pengurus DPD beserta dokumen pendukung",
+      description: `Isi data lengkap pengurus ${organizationInfo.tipe} beserta dokumen pendukung`,
       icon: Users,
       completed: Boolean(currentStepFromData > 2),
       route: "/input-pengurus",
@@ -111,8 +195,8 @@ const DashboardDPD = () => {
       completed: Boolean(currentStepFromData > 3),
       route: "/progress-sk",
     },
-  ];
-  console.log({ currentStepFromData });
+  ], [currentStepFromData, organizationInfo.tipe]);
+
   const stepProgressLimit = currentStepFromData === 4 ? 100 : 90;
   const progressPercentage = (currentStep / steps.length) * stepProgressLimit;
 
@@ -126,6 +210,13 @@ const DashboardDPD = () => {
     }
   };
 
+  useEffect(() => {
+    console.log({ progressPercentage, currentStepFromData, currentStep });
+    setCurrentStep(currentStepFromData);
+  }, [currentStepFromData]);
+
+  if (loading) return <LoadingScreen />;
+
   return (
     <div className="min-h-screen bg-gradient-soft">
       {/* Header */}
@@ -136,9 +227,9 @@ const DashboardDPD = () => {
               <img src={hanuraLogo} alt="HANURA" className="h-12 w-auto" />
               <div>
                 <h1 className="text-xl font-bold text-foreground">
-                  H-Gate050: MUSDA System
+                  H-Gate050 Desk Verifikasi Partai Hanura
                 </h1>
-                <p className="text-sm text-muted-foreground">Dashboard DPD</p>
+                <p className="text-sm text-muted-foreground">Dashboard {organizationInfo.nama}</p>
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={handleLogout}>
@@ -171,6 +262,47 @@ const DashboardDPD = () => {
           </CardContent>
         </Card>
 
+        {/* Data Administrasi Section (Terpisah dari flow MUSDA) */}
+        <Card className="mb-8 shadow-medium border-2 border-primary/20">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                <Building2 className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Data Administrasi {organizationInfo.tipe}</CardTitle>
+                <CardDescription>
+                  Kelengkapan data organisasi (dapat diisi kapan saja)
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid gap-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className={`h-2 w-2 rounded-full ${hasAdministrativeData ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                  <span className="text-muted-foreground">
+                    Status: {hasAdministrativeData ? 'Lengkap' : 'Belum Lengkap'}
+                  </span>
+                </div>
+                <p className="text-muted-foreground">
+                  • Upload bukti rekening organisasi<br />
+                  • Input alamat & foto sekretariat<br />
+                  • Upload dokumen legalitas kantor
+                </p>
+              </div>
+              <Button
+                onClick={() => navigate("/data-administrasi")}
+                variant={hasAdministrativeData ? "outline" : "default"}
+                className="w-full"
+              >
+                {hasAdministrativeData ? "Lihat/Edit Data" : "Lengkapi Data"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Steps Grid */}
         <div className="grid gap-6 md:grid-cols-3">
           {steps.map((step) => {
@@ -184,7 +316,7 @@ const DashboardDPD = () => {
                 className={`transition-all duration-300 cursor-pointer hover:shadow-large ${
                   isActive ? "ring-2 ring-primary shadow-large scale-105" : ""
                 } ${isCompleted ? "bg-accent/50" : ""}`}
-                onClick={() => setCurrentStep(step.number)}
+                // onClick={() => setCurrentStep(step.number)}
               >
                 <CardHeader>
                   <div className="flex items-center gap-4">

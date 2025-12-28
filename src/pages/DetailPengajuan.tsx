@@ -41,6 +41,7 @@ import { id as dateId } from "date-fns/locale";
 import hanuraLogo from "@/assets/hanura-logo.jpg";
 import { getSignedUrl } from "@/lib/storage";
 import type { Database } from "@/integrations/supabase/types";
+import { LoadingScreen } from "@/components/ui/spinner";
 
 type PengajuanStatus = Database["public"]["Enums"]["pengajuan_status"];
 type AppRole = Database["public"]["Enums"]["app_role"];
@@ -63,6 +64,8 @@ interface PengurusData {
   id: string;
   jabatan: string;
   nama_lengkap: string;
+  bidang_struktur: string;
+  jenis_struktur: string;
   jenis_kelamin: string;
   file_ktp: string;
   urutan: number;
@@ -323,14 +326,7 @@ const DetailPengajuan = () => {
     pengurusList.length > 0 ? (perempuanCount / pengurusList.length) * 100 : 0;
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-soft flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Memuat data...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!pengajuan) {
@@ -362,7 +358,7 @@ const DetailPengajuan = () => {
             <img src={hanuraLogo} alt="HANURA" className="h-12 w-auto" />
             <div>
               <h1 className="text-xl font-bold text-foreground">
-                H-Gate050: MUSDA System
+                H-Gate050 Desk Verifikasi Partai Hanura
               </h1>
               <p className="text-sm text-muted-foreground">
                 Detail Pengajuan SK
@@ -495,6 +491,7 @@ const DetailPengajuan = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>No</TableHead>
+                        <TableHead>Struktur</TableHead>
                         <TableHead>Jabatan</TableHead>
                         <TableHead>Nama Lengkap</TableHead>
                         <TableHead>JK</TableHead>
@@ -505,6 +502,19 @@ const DetailPengajuan = () => {
                       {pengurusList.map((pengurus, index) => (
                         <TableRow key={pengurus.id}>
                           <TableCell>{index + 1}</TableCell>
+                          <TableCell className="font-medium">
+                            {/* {pengurus.jenis_struktur || "-"} */}
+                            <div>
+                              <div className="font-medium">
+                                {pengurus.jenis_struktur}
+                              </div>
+                              {pengurus.bidang_struktur && (
+                                <div className="text-xs text-muted-foreground">
+                                  {pengurus.bidang_struktur}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell className="font-medium">
                             {pengurus.jabatan}
                           </TableCell>

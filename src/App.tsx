@@ -3,12 +3,14 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import DashboardDPD from "./pages/DashboardDPD";
 import UploadLaporanMusda from "./pages/UploadLaporanMusda";
 import InputDataPengurus from "./pages/InputDataPengurus";
 import ProgressPengajuanSK from "./pages/ProgressPengajuanSK";
+import DataAdministrasiDPD from "./pages/DataAdministrasiDPD";
 import DashboardAdmin from "./pages/DashboardAdmin";
 import DetailPengajuan from "./pages/DetailPengajuan";
 import NotFound from "./pages/NotFound";
@@ -26,12 +28,62 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/auth-admin" element={<AuthAdmin />} />
-          <Route path="/dashboard" element={<DashboardDPD />} />
-          <Route path="/upload-laporan" element={<UploadLaporanMusda />} />
-          <Route path="/input-pengurus" element={<InputDataPengurus />} />
-          <Route path="/progress-sk" element={<ProgressPengajuanSK />} />
-          <Route path="/dashboard-admin" element={<DashboardAdmin />} />
-          <Route path="/detail-pengajuan/:id" element={<DetailPengajuan />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardDPD />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/upload-laporan"
+            element={
+              <ProtectedRoute>
+                <UploadLaporanMusda />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/data-administrasi"
+            element={
+              <ProtectedRoute>
+                <DataAdministrasiDPD />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/input-pengurus"
+            element={
+              <ProtectedRoute>
+                <InputDataPengurus />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/progress-sk"
+            element={
+              <ProtectedRoute>
+                <ProgressPengajuanSK />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard-admin"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <DashboardAdmin />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/detail-pengajuan/:id"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <DetailPengajuan />
+              </ProtectedRoute>
+            }
+          />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

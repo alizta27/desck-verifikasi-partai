@@ -67,7 +67,7 @@ const Index = () => {
           <div className="space-y-4">
             <h1 className="text-5xl md:text-6xl font-bold">
               <span className="bg-gradient-primary bg-clip-text text-transparent">
-                H-Gate050: MUSDA System
+                H-Gate050 Desk Verifikasi Partai Hanura
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground font-medium">

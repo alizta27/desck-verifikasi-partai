@@ -32,6 +32,7 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import hanuraLogo from "@/assets/hanura-logo.jpg";
 import type { Database } from "@/integrations/supabase/types";
+import { LoadingScreen } from "@/components/ui/spinner";
 
 type PengajuanStatus = Database["public"]["Enums"]["pengajuan_status"];
 type AppRole = Database["public"]["Enums"]["app_role"];
@@ -218,14 +219,7 @@ const DashboardAdmin = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-soft flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Memuat data...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (
@@ -237,7 +231,7 @@ const DashboardAdmin = () => {
               <img src={hanuraLogo} alt="HANURA" className="h-12 w-auto" />
               <div>
                 <h1 className="text-xl font-bold text-foreground">
-                  H-Gate050: MUSDA System
+                  H-Gate050 Desk Verifikasi Partai Hanura
                 </h1>
                 <p className="text-sm text-muted-foreground">
                   Dashboard {userRole?.toUpperCase()}

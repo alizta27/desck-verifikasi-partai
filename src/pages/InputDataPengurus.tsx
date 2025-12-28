@@ -18,6 +18,8 @@ import { FormPengurus } from "@/components/pengurus/FormPengurus";
 import { ListPengurus } from "@/components/pengurus/ListPengurus";
 import { ProgressGender } from "@/components/pengurus/ProgressGender";
 import { CustomJabatanDialog } from "@/components/pengurus/CustomJabatanDialog";
+import { LoadingScreen } from "@/components/ui/spinner";
+import { getOrganizationInfo, OrganizationInfo } from "@/lib/organization";
 
 const InputDataPengurus = () => {
   const navigate = useNavigate();
@@ -32,20 +34,33 @@ const InputDataPengurus = () => {
     jabatan: "",
     nama_lengkap: "",
     jenis_kelamin: "",
-    file_ktp: null,
+    file_ktp: "",
     urutan: 0,
   });
   const [pengajuanId, setPengajuanId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [customDialogOpen, setCustomDialogOpen] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(true);
+  const [organizationInfo, setOrganizationInfo] = useState<OrganizationInfo>({
+    tipe: "DPD",
+    nama: "DPD",
+    fullName: "DPD",
+  });
 
   useEffect(() => {
     loadPengajuan();
     loadCustomJabatan();
+    loadOrganizationInfo();
   }, []);
+
+  const loadOrganizationInfo = async () => {
+    const orgInfo = await getOrganizationInfo();
+    setOrganizationInfo(orgInfo);
+  };
 
   const loadPengajuan = async () => {
     try {
+      setIsPageLoading(true);
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -73,10 +88,14 @@ const InputDataPengurus = () => {
     } catch (error) {
       console.error("Error loading pengajuan:", error);
       toast.error("Gagal memuat data pengajuan");
+    } finally {
+      setIsPageLoading(false);
     }
   };
 
   const loadPengurus = async (id: string) => {
+    setIsPageLoading(true);
+
     try {
       const { data, error } = await supabase
         .from("pengurus")
@@ -91,11 +110,14 @@ const InputDataPengurus = () => {
       }
     } catch (error) {
       console.error("Error loading pengurus:", error);
+    } finally {
+      setIsPageLoading(false);
     }
   };
 
   const loadCustomJabatan = async () => {
     try {
+      setIsPageLoading(true);
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -114,6 +136,8 @@ const InputDataPengurus = () => {
       }
     } catch (error) {
       console.error("Error loading custom jabatan:", error);
+    } finally {
+      setIsPageLoading(false);
     }
   };
 
@@ -129,8 +153,7 @@ const InputDataPengurus = () => {
 
       const exists = customJabatanList.some(
         (cj) =>
-          cj.jenis_struktur === jenisStruktur &&
-          cj.nama_jabatan === namaJabatan
+          cj.jenis_struktur === jenisStruktur && cj.nama_jabatan === namaJabatan
       );
 
       if (exists) {
@@ -198,7 +221,7 @@ const InputDataPengurus = () => {
       jabatan: "",
       nama_lengkap: "",
       jenis_kelamin: "",
-      file_ktp: null,
+      file_ktp: "",
       urutan: 0,
     });
   };
@@ -213,11 +236,15 @@ const InputDataPengurus = () => {
     setPengurusList(pengurusList.filter((_, i) => i !== index));
     toast.success("Pengurus berhasil dihapus");
   };
-
+  console.log({
+    val: pengurusList
+      ?.filter((p) => p.jenis_struktur !== "Biro-Biro")
+      ?.filter((p) => p.jenis_kelamin === "Perempuan"),
+  });
   const validatePerempuan = () => {
-    const perempuanCount = pengurusList.filter(
-      (p) => p.jenis_kelamin === "Perempuan"
-    ).length;
+    const perempuanCount = pengurusList
+      ?.filter((p) => p.jenis_struktur !== "Biro-Biro")
+      ?.filter((p) => p.jenis_kelamin === "Perempuan").length;
     const percentage = (perempuanCount / pengurusList.length) * 100;
     return percentage >= 30;
   };
@@ -310,7 +337,9 @@ const InputDataPengurus = () => {
     }
   };
 
-  return (
+  return isPageLoading ? (
+    <LoadingScreen />
+  ) : (
     <div className="min-h-screen bg-gradient-soft">
       <header className="bg-card border-b shadow-soft sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
@@ -318,7 +347,7 @@ const InputDataPengurus = () => {
             <img src={hanuraLogo} alt="HANURA" className="h-12 w-auto" />
             <div>
               <h1 className="text-xl font-bold text-foreground">
-                H-Gate050: MUSDA System
+                H-Gate050 Desk Verifikasi Partai Hanura
               </h1>
               <p className="text-sm text-muted-foreground">
                 Input Data Pengurus
@@ -349,11 +378,11 @@ const InputDataPengurus = () => {
         </Card>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <Card className="shadow-large">
+          <Card className="shadow-large h-[fit-content]">
             <CardHeader>
               <CardTitle>Form Data Pengurus</CardTitle>
               <CardDescription>
-                Isi data lengkap pengurus DPD beserta dokumen KTP
+                Isi data lengkap pengurus {organizationInfo.tipe} beserta dokumen KTP
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -369,7 +398,11 @@ const InputDataPengurus = () => {
           </Card>
 
           <div className="space-y-6">
-            <ProgressGender pengurusList={pengurusList} />
+            <ProgressGender
+              pengurusList={pengurusList?.filter(
+                (p) => p.jenis_struktur !== "Biro-Biro"
+              )}
+            />
 
             <Card className="shadow-large">
               <CardHeader>
@@ -388,7 +421,7 @@ const InputDataPengurus = () => {
 
         <Card className="mt-6 shadow-medium">
           <CardContent className="pt-6">
-            <div className="flex gap-4">
+            <div className="flex md:flex-row flex-col gap-4">
               <Button
                 variant="outline"
                 onClick={() => navigate("/upload-laporan")}

@@ -11,6 +11,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import hanuraLogo from "@/assets/hanura-logo.jpg";
 
@@ -20,7 +27,12 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [tipeOrganisasi, setTipeOrganisasi] = useState<"dpd" | "dpc" | "pac">(
+    "dpd"
+  );
   const [provinsi, setProvinsi] = useState("");
+  const [kabupatenKota, setKabupatenKota] = useState("");
+  const [kecamatan, setKecamatan] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -62,13 +74,33 @@ const Auth = () => {
 
         toast.success("Login berhasil!");
       } else {
+        // Validation based on organization type
+        if (!provinsi) {
+          toast.error("Provinsi harus diisi");
+          return;
+        }
+        if (
+          (tipeOrganisasi === "dpc" || tipeOrganisasi === "pac") &&
+          !kabupatenKota
+        ) {
+          toast.error("Kabupaten/Kota harus diisi");
+          return;
+        }
+        if (tipeOrganisasi === "pac" && !kecamatan) {
+          toast.error("Kecamatan harus diisi");
+          return;
+        }
+
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
               full_name: fullName,
+              tipe_organisasi: tipeOrganisasi,
               provinsi: provinsi,
+              kabupaten_kota: kabupatenKota || null,
+              kecamatan: kecamatan || null,
               role: "dpd",
             },
             emailRedirectTo: `${window.location.origin}/dashboard`,
@@ -96,7 +128,7 @@ const Auth = () => {
           </div>
           <div>
             <CardTitle className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              H-Gate050: MUSDA System
+              H-Gate050 Desk Verifikasi Partai Hanura
             </CardTitle>
             <CardDescription className="mt-2">
               Sistem Pengajuan SK dan Laporan MUSDA
@@ -117,15 +149,81 @@ const Auth = () => {
                     required={!isLogin}
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="provinsi">Provinsi</Label>
+                  <Label htmlFor="tipeOrganisasi">Tipe Organisasi</Label>
+                  <Select
+                    value={tipeOrganisasi}
+                    onValueChange={(value: "dpd" | "dpc" | "pac") => {
+                      setTipeOrganisasi(value);
+                      // Reset dependent fields when type changes
+                      if (value === "dpd") {
+                        setKabupatenKota("");
+                        setKecamatan("");
+                      } else if (value === "dpc") {
+                        setKecamatan("");
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="tipeOrganisasi">
+                      <SelectValue placeholder="Pilih tipe organisasi" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dpd">
+                        DPD (Dewan Pimpinan Daerah)
+                      </SelectItem>
+                      <SelectItem value="dpc">
+                        DPC (Dewan Pimpinan Cabang)
+                      </SelectItem>
+                      <SelectItem value="pac">
+                        PAC (Pimpinan Anak Cabang)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="provinsi">
+                    Provinsi <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     id="provinsi"
-                    placeholder="Masukkan provinsi"
+                    placeholder="Contoh: Sulawesi Tenggara"
                     value={provinsi}
                     onChange={(e) => setProvinsi(e.target.value)}
+                    required={!isLogin}
                   />
                 </div>
+
+                {(tipeOrganisasi === "dpc" || tipeOrganisasi === "pac") && (
+                  <div className="space-y-2">
+                    <Label htmlFor="kabupatenKota">
+                      Kabupaten/Kota <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="kabupatenKota"
+                      placeholder="Contoh: Kota Kendari"
+                      value={kabupatenKota}
+                      onChange={(e) => setKabupatenKota(e.target.value)}
+                      required={!isLogin}
+                    />
+                  </div>
+                )}
+
+                {tipeOrganisasi === "pac" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="kecamatan">
+                      Kecamatan <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="kecamatan"
+                      placeholder="Contoh: Poasia"
+                      value={kecamatan}
+                      onChange={(e) => setKecamatan(e.target.value)}
+                      required={!isLogin}
+                    />
+                  </div>
+                )}
               </>
             )}
             <div className="space-y-2">

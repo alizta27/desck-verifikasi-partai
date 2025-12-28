@@ -24,6 +24,7 @@ import {
   ArrowRight,
   Eye,
   Trash,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
@@ -38,6 +39,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { LoadingScreen } from "@/components/ui/spinner";
 
 const UploadLaporanMusda = () => {
   const navigate = useNavigate();
@@ -47,6 +49,7 @@ const UploadLaporanMusda = () => {
   const [uploading, setUploading] = useState(false);
   const [musdaFileUrl, setMusdaFileUrl] = useState<string>("");
   const [isEdit, setIsEdit] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadPengajuan();
@@ -54,6 +57,7 @@ const UploadLaporanMusda = () => {
 
   const loadPengajuan = async () => {
     try {
+      setLoading(true);
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -86,8 +90,9 @@ const UploadLaporanMusda = () => {
         setMusdaFileUrl(signedUrl || "");
       }
     } catch (error) {
-      console.error("Error loading pengajuan:", error);
       toast.error("Gagal memuat data pengajuan");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -140,7 +145,6 @@ const UploadLaporanMusda = () => {
       }
 
       let dbError;
-      console.log({ musdaFileUrl, fileName, data: musdaFileUrl ?? fileName });
       if (isEdit) {
         const { error } = await supabase
           .from("pengajuan_sk")
@@ -171,13 +175,11 @@ const UploadLaporanMusda = () => {
       toast.success("Laporan MUSDA berhasil diupload");
       navigate("/dashboard");
     } catch (error) {
-      console.error("Error uploading:", error);
       toast.error("Gagal mengupload laporan");
     } finally {
       setUploading(false);
     }
   };
-  console.log({ musdaFileUrl });
   const handleDeleteFile = async () => {
     if (!musdaFileUrl) {
       toast.error("Tidak ada file untuk dihapus");
@@ -219,12 +221,13 @@ const UploadLaporanMusda = () => {
 
       toast.success("File laporan berhasil dihapus");
     } catch (error) {
-      console.error("Error deleting file:", error);
       toast.error("Gagal menghapus file laporan");
     } finally {
       setUploading(false);
     }
   };
+
+  if (loading) return <LoadingScreen />;
 
   return (
     <div className="min-h-screen bg-gradient-soft">
@@ -234,7 +237,7 @@ const UploadLaporanMusda = () => {
             <img src={hanuraLogo} alt="HANURA" className="h-12 w-auto" />
             <div>
               <h1 className="text-xl font-bold text-foreground">
-                H-Gate050: MUSDA System
+                H-Gate050 Desk Verifikasi Partai Hanura
               </h1>
               <p className="text-sm text-muted-foreground">
                 Upload Laporan MUSDA
@@ -263,6 +266,47 @@ const UploadLaporanMusda = () => {
             <Progress value={33.33} className="h-3" />
           </CardContent>
         </Card>
+
+        {/* 🔽 KOMPONEN DOWNLOAD BARU */}
+        <Card className="mb-8 shadow-medium border border-muted">
+          <CardHeader>
+            <CardTitle>Template Dokumen Laporan MUSDA</CardTitle>
+            <CardDescription>
+              Unduh template resmi yang harus digunakan dalam penyusunan
+              laporan.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col sm:flex-row gap-4">
+            <Button
+              variant="secondary"
+              className="flex-1"
+              onClick={() =>
+                window.open(
+                  "https://docs.google.com/document/d/1X2SL9Ebu6VCwZOIEYuMPIi68LiD1cI47/edit?usp=sharing&ouid=112223445245356908669&rtpof=true&sd=true",
+                  "_blank"
+                )
+              }
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Cover Laporan MUSDA
+            </Button>
+
+            <Button
+              variant="secondary"
+              className="flex-1"
+              onClick={() =>
+                window.open(
+                  "https://docs.google.com/document/d/10FP6ajhAdI8s3872orqGxbBk7FrrYBXX/edit?usp=sharing&ouid=112223445245356908669&rtpof=true&sd=true",
+                  "_blank"
+                )
+              }
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Format Laporan MUSDA
+            </Button>
+          </CardContent>
+        </Card>
+        {/* 🔼 END KOMPONEN DOWNLOAD */}
 
         <Card className="shadow-large">
           <CardHeader>

@@ -5,7 +5,7 @@ export interface Pengurus {
   jabatan: string;
   nama_lengkap: string;
   jenis_kelamin: string;
-  file_ktp: File | string | null;
+  file_ktp: File | string;
   urutan: number;
 }
 
@@ -25,7 +25,7 @@ export const JENIS_STRUKTUR = [
   "Koordinator Cabang",
 ] as const;
 
-export type JenisStruktur = typeof JENIS_STRUKTUR[number];
+export type JenisStruktur = (typeof JENIS_STRUKTUR)[number];
 
 export const JABATAN_DEWAN_PENASEHAT = [
   "Ketua",

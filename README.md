@@ -1,22 +1,29 @@
-# H-Gate050: MUSDA System
+# H-Gate050 Desk Verifikasi Partai Hanura
 
 Sistem Pengajuan SK dan Laporan MUSDA untuk Partai Hati Nurani Rakyat (HANURA).
 
 ## Deskripsi
 
-H-Gate050: MUSDA System adalah aplikasi web untuk mengelola pengajuan Surat Keputusan (SK) Kepengurusan DPD dan laporan hasil Musyawarah Daerah (MUSDA). Aplikasi ini memudahkan proses pengajuan, verifikasi, dan persetujuan SK dari DPD hingga Ketua Umum.
+H-Gate050 Desk Verifikasi Partai Hanura adalah aplikasi web untuk mengelola pengajuan Surat Keputusan (SK) Kepengurusan dan laporan hasil Musyawarah Daerah (MUSDA) untuk organisasi multi-tingkat. Aplikasi ini mendukung:
+
+- **DPD** (Dewan Pimpinan Daerah) - Tingkat Provinsi
+- **DPC** (Dewan Pimpinan Cabang) - Tingkat Kabupaten/Kota
+- **PAC** (Pimpinan Anak Cabang) - Tingkat Kecamatan
+
+Aplikasi ini memudahkan proses pengajuan, verifikasi, dan persetujuan SK dari organisasi hingga Ketua Umum.
 
 ## Fitur Utama
 
-### Untuk DPD
+### Untuk Organisasi (DPD/DPC/PAC)
 
 - **Upload Laporan MUSDA** - Upload file PDF laporan hasil MUSDA dengan informasi tanggal dan lokasi
-- **Input Data Pengurus** - Input data lengkap pengurus DPD dengan validasi keterwakilan perempuan minimal 30%
+- **Input Data Pengurus** - Input data lengkap pengurus dengan validasi keterwakilan perempuan minimal 30%
+- **Data Administrasi** - Kelola data rekening, alamat sekretariat, dan legalitas kantor
 - **Tracking Progress SK** - Pantau status persetujuan SK secara real-time
 
 ### Untuk Admin (OKK, Sekjend, Ketum)
 
-- **Dashboard Admin** - Lihat semua pengajuan dari seluruh DPD
+- **Dashboard Admin** - Lihat semua pengajuan dari seluruh organisasi
 - **Verifikasi Dokumen** - Verifikasi dan review dokumen pengajuan
 - **Approval System** - Setujui atau tolak pengajuan dengan catatan revisi
 - **PDF Viewer** - Lihat dokumen langsung tanpa download
@@ -48,22 +55,27 @@ supabase/
 
 ### Tables
 
-- `profiles` - Data user dan role
+- `profiles` - Data user, role, dan tipe organisasi (DPD/DPC/PAC)
 - `user_roles` - Manajemen role user
-- `pengajuan_sk` - Data pengajuan SK dari DPD
-- `pengurus` - Data pengurus DPD
+- `pengajuan_sk` - Data pengajuan SK dari organisasi
+- `pengurus` - Data pengurus organisasi
+- `dpd_bank_account` - Data rekening organisasi
+- `dpd_office_address` - Data alamat sekretariat
+- `dpd_office_legality` - Data legalitas kantor
 
 ### Storage Buckets
 
 - `laporan-musda` - File PDF laporan MUSDA (max 10MB)
 - `ktp-pengurus` - File KTP pengurus (max 5MB, JPG/PNG/PDF)
+- `dpd-documents` - File dokumen administrasi (max 5MB, JPG/PNG/PDF)
 
 ## Role & Permission
 
-### DPD
+### Organisasi (DPD/DPC/PAC)
 
 - Upload laporan MUSDA
 - Input data pengurus
+- Kelola data administrasi organisasi
 - Lihat progress pengajuan sendiri
 - Revisi pengajuan yang ditolak
 

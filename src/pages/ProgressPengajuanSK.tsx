@@ -24,6 +24,8 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import hanuraLogo from "@/assets/hanura-logo.jpg";
 import type { Database } from "@/integrations/supabase/types";
+import { LoadingScreen } from "@/components/ui/spinner";
+import { getOrganizationInfo, OrganizationInfo } from "@/lib/organization";
 
 type PengajuanStatus = Database["public"]["Enums"]["pengajuan_status"];
 
@@ -76,10 +78,21 @@ const ProgressPengajuanSK = () => {
   const navigate = useNavigate();
   const [pengajuan, setPengajuan] = useState<PengajuanSK | null>(null);
   const [loading, setLoading] = useState(true);
+  const [organizationInfo, setOrganizationInfo] = useState<OrganizationInfo>({
+    tipe: "DPD",
+    nama: "DPD",
+    fullName: "DPD",
+  });
 
   useEffect(() => {
     loadPengajuan();
+    loadOrganizationInfo();
   }, []);
+
+  const loadOrganizationInfo = async () => {
+    const orgInfo = await getOrganizationInfo();
+    setOrganizationInfo(orgInfo);
+  };
 
   const loadPengajuan = async () => {
     try {
@@ -183,14 +196,7 @@ const ProgressPengajuanSK = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-soft flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Memuat data...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!pengajuan) {
@@ -226,7 +232,7 @@ const ProgressPengajuanSK = () => {
             <img src={hanuraLogo} alt="HANURA" className="h-12 w-auto" />
             <div>
               <h1 className="text-xl font-bold text-foreground">
-                H-Gate050: MUSDA System
+                H-Gate050 Desk Verifikasi Partai Hanura
               </h1>
               <p className="text-sm text-muted-foreground">
                 Progress Pengajuan SK
@@ -495,7 +501,7 @@ const ProgressPengajuanSK = () => {
                 </CardTitle>
               </div>
               <CardDescription>
-                Selamat! Surat Keputusan kepengurusan DPD Anda telah terbit
+                Selamat! Surat Keputusan kepengurusan {organizationInfo.tipe} Anda telah terbit
               </CardDescription>
             </CardHeader>
             <CardContent>
