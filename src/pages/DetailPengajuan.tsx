@@ -33,6 +33,10 @@ import {
   FileText,
   Download,
   Eye,
+  Building2,
+  CreditCard,
+  MapPin,
+  FileCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -48,6 +52,7 @@ type AppRole = Database["public"]["Enums"]["app_role"];
 
 interface PengajuanDetail {
   id: string;
+  dpd_id: string;
   status: PengajuanStatus;
   tanggal_musda: string;
   lokasi_musda: string;
@@ -56,8 +61,36 @@ interface PengajuanDetail {
   created_at: string;
   profiles: {
     full_name: string;
+    tipe_organisasi: string | null;
     provinsi: string | null;
+    kabupaten_kota: string | null;
+    kecamatan: string | null;
   };
+}
+
+interface BankAccountData {
+  id: string;
+  nama_pemilik_rekening: string;
+  nama_bank: string;
+  nomor_rekening: string;
+  file_bukti_rekening: string | null;
+}
+
+interface OfficeAddressData {
+  id: string;
+  provinsi: string;
+  kabupaten_kota: string;
+  kecamatan: string;
+  alamat_lengkap: string;
+  file_foto_kantor_depan: string | null;
+  file_foto_papan_nama: string | null;
+}
+
+interface OfficeLegalityData {
+  id: string;
+  jenis_dokumen: "sewa" | "pernyataan" | "kepemilikan";
+  file_dokumen_legalitas: string | null;
+  keterangan: string | null;
 }
 
 interface PengurusData {
@@ -82,6 +115,9 @@ const DetailPengajuan = () => {
   const [catatanRevisi, setCatatanRevisi] = useState("");
   const [showPdfDialog, setShowPdfDialog] = useState(false);
   const [pdfUrl, setPdfUrl] = useState("");
+  const [bankAccount, setBankAccount] = useState<BankAccountData | null>(null);
+  const [officeAddress, setOfficeAddress] = useState<OfficeAddressData | null>(null);
+  const [officeLegality, setOfficeLegality] = useState<OfficeLegalityData | null>(null);
 
   useEffect(() => {
     loadUserRole();
@@ -93,6 +129,13 @@ const DetailPengajuan = () => {
       loadPengurus();
     }
   }, [userRole, id]);
+
+  useEffect(() => {
+    if (pengajuan?.dpd_id) {
+      loadAdministrativeData(pengajuan.dpd_id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pengajuan?.dpd_id]);
 
   const loadUserRole = async () => {
     try {
@@ -132,6 +175,7 @@ const DetailPengajuan = () => {
         .select(
           `
           id,
+          dpd_id,
           status,
           tanggal_musda,
           lokasi_musda,
@@ -140,7 +184,10 @@ const DetailPengajuan = () => {
           created_at,
           profiles:dpd_id (
             full_name,
-            provinsi
+            tipe_organisasi,
+            provinsi,
+            kabupaten_kota,
+            kecamatan
           )
         `
         )
@@ -150,7 +197,7 @@ const DetailPengajuan = () => {
       if (error) throw error;
 
       if (data) {
-        setPengajuan(data as PengajuanDetail);
+        setPengajuan((data as any) as PengajuanDetail);
       } else {
         toast.error("Pengajuan tidak ditemukan");
         navigate("/dashboard-admin");
@@ -168,15 +215,48 @@ const DetailPengajuan = () => {
     try {
       const { data, error } = await supabase
         .from("pengurus")
-        .select("*")
+        .select("id, jabatan, nama_lengkap, bidang_struktur, jenis_struktur, jenis_kelamin, file_ktp, urutan")
         .eq("pengajuan_id", id)
         .order("urutan", { ascending: true });
 
       if (error) throw error;
 
-      setPengurusList(data as PengurusData[]);
+      setPengurusList((data as any) as PengurusData[]);
     } catch (error) {
       console.error("Error loading pengurus:", error);
+    }
+  };
+
+  const loadAdministrativeData = async (dpdId: string) => {
+    try {
+      // Load bank account
+      const { data: bankData } = await (supabase as any)
+        .from("dpd_bank_account")
+        .select("*")
+        .eq("dpd_id", dpdId)
+        .maybeSingle();
+
+      if (bankData) setBankAccount(bankData as unknown as BankAccountData);
+
+      // Load office address
+      const { data: officeData } = await (supabase as any)
+        .from("dpd_office_address")
+        .select("*")
+        .eq("dpd_id", dpdId)
+        .maybeSingle();
+
+      if (officeData) setOfficeAddress(officeData as unknown as OfficeAddressData);
+
+      // Load office legality
+      const { data: legalityData } = await (supabase as any)
+        .from("dpd_office_legality")
+        .select("*")
+        .eq("dpd_id", dpdId)
+        .maybeSingle();
+
+      if (legalityData) setOfficeLegality(legalityData as unknown as OfficeLegalityData);
+    } catch (error) {
+      console.error("Error loading administrative data:", error);
     }
   };
 
@@ -387,21 +467,42 @@ const DetailPengajuan = () => {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-muted-foreground">DPD</Label>
-                    <p className="font-semibold">
-                      {pengajuan?.profiles?.full_name}
-                    </p>
+                    <Label className="text-muted-foreground">Tipe Organisasi</Label>
+                    <div className="mt-1">
+                      <Badge variant="outline" className="font-semibold">
+                        {pengajuan?.profiles?.tipe_organisasi?.toUpperCase() || "DPD"}
+                      </Badge>
+                    </div>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Provinsi</Label>
+                    <Label className="text-muted-foreground">Nama Organisasi</Label>
                     <p className="font-semibold">
-                      {pengajuan?.profiles?.provinsi || "-"}
+                      {pengajuan?.profiles?.tipe_organisasi === "dpd" && `DPD ${pengajuan?.profiles?.provinsi || ""}`}
+                      {pengajuan?.profiles?.tipe_organisasi === "dpc" && `DPC ${pengajuan?.profiles?.kabupaten_kota || ""}`}
+                      {pengajuan?.profiles?.tipe_organisasi === "pac" && `PAC Kec. ${pengajuan?.profiles?.kecamatan || ""}`}
+                      {!pengajuan?.profiles?.tipe_organisasi && pengajuan?.profiles?.provinsi}
                     </p>
                   </div>
+                  {pengajuan?.profiles?.provinsi && (
+                    <div>
+                      <Label className="text-muted-foreground">Provinsi</Label>
+                      <p className="font-semibold">{pengajuan?.profiles?.provinsi}</p>
+                    </div>
+                  )}
+                  {pengajuan?.profiles?.kabupaten_kota && (
+                    <div>
+                      <Label className="text-muted-foreground">Kabupaten/Kota</Label>
+                      <p className="font-semibold">{pengajuan?.profiles?.kabupaten_kota}</p>
+                    </div>
+                  )}
+                  {pengajuan?.profiles?.kecamatan && (
+                    <div>
+                      <Label className="text-muted-foreground">Kecamatan</Label>
+                      <p className="font-semibold">{pengajuan?.profiles?.kecamatan}</p>
+                    </div>
+                  )}
                   <div>
-                    <Label className="text-muted-foreground">
-                      Tanggal MUSDA
-                    </Label>
+                    <Label className="text-muted-foreground">Tanggal MUSDA</Label>
                     <p className="font-semibold">
                       {format(new Date(pengajuan?.tanggal_musda), "PPP", {
                         locale: dateId,
@@ -409,15 +510,11 @@ const DetailPengajuan = () => {
                     </p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">
-                      Lokasi MUSDA
-                    </Label>
+                    <Label className="text-muted-foreground">Lokasi MUSDA</Label>
                     <p className="font-semibold">{pengajuan?.lokasi_musda}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">
-                      Tanggal Pengajuan
-                    </Label>
+                    <Label className="text-muted-foreground">Tanggal Pengajuan</Label>
                     <p className="font-semibold">
                       {format(new Date(pengajuan?.created_at), "PPP", {
                         locale: dateId,
@@ -535,6 +632,197 @@ const DetailPengajuan = () => {
                       ))}
                     </TableBody>
                   </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Data Administrasi - Bank Account */}
+            <Card className="shadow-large">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                    <CreditCard className="h-5 w-5 text-primary" />
+                  </div>
+                  <CardTitle>Data Rekening</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!bankAccount ? (
+                  <p className="text-center text-muted-foreground py-4">
+                    Belum ada data rekening
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Nama Pemilik Rekening</Label>
+                      <p className="font-medium">{bankAccount.nama_pemilik_rekening}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Nama Bank</Label>
+                        <p className="font-medium">{bankAccount.nama_bank}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Nomor Rekening</Label>
+                        <p className="font-medium">{bankAccount.nomor_rekening}</p>
+                      </div>
+                    </div>
+                    {bankAccount.file_bukti_rekening && (
+                      <div className="pt-2 border-t">
+                        <Label className="text-muted-foreground text-xs">Bukti Rekening</Label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="mt-2"
+                          onClick={async () => {
+                            const signedUrl = await getSignedUrl(
+                              "dpd-documents",
+                              bankAccount.file_bukti_rekening!
+                            );
+                            if (signedUrl) window.open(signedUrl, "_blank");
+                          }}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          Lihat Dokumen
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Data Administrasi - Office Address */}
+            <Card className="shadow-large">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                    <MapPin className="h-5 w-5 text-primary" />
+                  </div>
+                  <CardTitle>Alamat Sekretariat</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!officeAddress ? (
+                  <p className="text-center text-muted-foreground py-4">
+                    Belum ada data alamat sekretariat
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Alamat Lengkap</Label>
+                      <p className="font-medium">{officeAddress.alamat_lengkap}</p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Kecamatan</Label>
+                        <p className="text-sm">{officeAddress.kecamatan}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Kabupaten/Kota</Label>
+                        <p className="text-sm">{officeAddress.kabupaten_kota}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Provinsi</Label>
+                        <p className="text-sm">{officeAddress.provinsi}</p>
+                      </div>
+                    </div>
+                    {(officeAddress.file_foto_kantor_depan || officeAddress.file_foto_papan_nama) && (
+                      <div className="pt-2 border-t">
+                        <Label className="text-muted-foreground text-xs">Foto Kantor</Label>
+                        <div className="flex gap-2 mt-2">
+                          {officeAddress.file_foto_kantor_depan && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                const signedUrl = await getSignedUrl(
+                                  "dpd-documents",
+                                  officeAddress.file_foto_kantor_depan!
+                                );
+                                if (signedUrl) window.open(signedUrl, "_blank");
+                              }}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              Foto Depan
+                            </Button>
+                          )}
+                          {officeAddress.file_foto_papan_nama && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                const signedUrl = await getSignedUrl(
+                                  "dpd-documents",
+                                  officeAddress.file_foto_papan_nama!
+                                );
+                                if (signedUrl) window.open(signedUrl, "_blank");
+                              }}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              Papan Nama
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Data Administrasi - Office Legality */}
+            <Card className="shadow-large">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                    <FileCheck className="h-5 w-5 text-primary" />
+                  </div>
+                  <CardTitle>Legalitas Kantor</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!officeLegality ? (
+                  <p className="text-center text-muted-foreground py-4">
+                    Belum ada data legalitas kantor
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Jenis Dokumen</Label>
+                      <Badge variant="secondary" className="mt-1">
+                        {officeLegality.jenis_dokumen === "sewa" && "Surat Sewa"}
+                        {officeLegality.jenis_dokumen === "pernyataan" && "Surat Pernyataan"}
+                        {officeLegality.jenis_dokumen === "kepemilikan" && "Sertifikat Kepemilikan"}
+                      </Badge>
+                    </div>
+                    {officeLegality.keterangan && (
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Keterangan</Label>
+                        <p className="text-sm">{officeLegality.keterangan}</p>
+                      </div>
+                    )}
+                    {officeLegality.file_dokumen_legalitas && (
+                      <div className="pt-2 border-t">
+                        <Label className="text-muted-foreground text-xs">Dokumen Legalitas</Label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="mt-2"
+                          onClick={async () => {
+                            const signedUrl = await getSignedUrl(
+                              "dpd-documents",
+                              officeLegality.file_dokumen_legalitas!
+                            );
+                            if (signedUrl) window.open(signedUrl, "_blank");
+                          }}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          Lihat Dokumen
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </CardContent>
             </Card>

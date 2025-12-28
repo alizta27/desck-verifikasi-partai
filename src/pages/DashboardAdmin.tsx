@@ -44,8 +44,11 @@ interface PengajuanWithProfile {
   lokasi_musda: string;
   created_at: string;
   profiles: {
-    full_name: string;
+    full_name: string | null;
+    tipe_organisasi: string | null;
     provinsi: string | null;
+    kabupaten_kota: string | null;
+    kecamatan: string | null;
   } | null;
 }
 
@@ -143,7 +146,10 @@ const DashboardAdmin = () => {
           created_at,
             profiles!dpd_id (
                   full_name,
-                  provinsi
+                  tipe_organisasi,
+                  provinsi,
+                  kabupaten_kota,
+                  kecamatan
                 )
         `
         )
@@ -151,7 +157,7 @@ const DashboardAdmin = () => {
 
       if (error) throw error;
       console.log({ data });
-      setPengajuanList(data as PengajuanWithProfile[]);
+      setPengajuanList((data as any) as PengajuanWithProfile[]);
     } catch (error) {
       console.error("Error loading pengajuan:", error);
       toast.error("Gagal memuat data pengajuan");
@@ -287,7 +293,7 @@ const DashboardAdmin = () => {
           <CardHeader>
             <CardTitle>Daftar Pengajuan SK</CardTitle>
             <CardDescription>
-              Kelola dan verifikasi pengajuan SK dari seluruh DPD
+              Kelola dan verifikasi pengajuan SK dari seluruh organisasi (DPD, DPC, PAC)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -356,7 +362,8 @@ const DashboardAdmin = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>DPD Provinsi</TableHead>
+                    <TableHead>Tipe</TableHead>
+                    <TableHead>Organisasi</TableHead>
                     <TableHead>Tanggal MUSDA</TableHead>
                     <TableHead>Lokasi</TableHead>
                     <TableHead>Status</TableHead>
@@ -365,49 +372,69 @@ const DashboardAdmin = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredList.map((pengajuan) => (
-                    <TableRow key={pengajuan.id}>
-                      <TableCell>
-                        {pengajuan.profiles?.provinsi || "-"}
-                      </TableCell>
-                      <TableCell>
-                        {format(
-                          new Date(pengajuan.tanggal_musda),
-                          "dd MMM yyyy",
-                          {
+                  {filteredList.map((pengajuan) => {
+                    const tipe = pengajuan.profiles?.tipe_organisasi?.toUpperCase() || "DPD";
+                    let orgName = "";
+
+                    if (pengajuan.profiles?.tipe_organisasi === "dpd") {
+                      orgName = `DPD ${pengajuan.profiles?.provinsi || ""}`;
+                    } else if (pengajuan.profiles?.tipe_organisasi === "dpc") {
+                      orgName = `DPC ${pengajuan.profiles?.kabupaten_kota || ""}`;
+                    } else if (pengajuan.profiles?.tipe_organisasi === "pac") {
+                      orgName = `PAC Kec. ${pengajuan.profiles?.kecamatan || ""}`;
+                    } else {
+                      orgName = pengajuan.profiles?.provinsi || "-";
+                    }
+
+                    return (
+                      <TableRow key={pengajuan.id}>
+                        <TableCell>
+                          <Badge variant="outline" className="font-semibold">
+                            {tipe}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {orgName}
+                        </TableCell>
+                        <TableCell>
+                          {format(
+                            new Date(pengajuan.tanggal_musda),
+                            "dd MMM yyyy",
+                            {
+                              locale: id,
+                            }
+                          )}
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate">
+                          {pengajuan.lokasi_musda}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            className={`${
+                              STATUS_COLORS[pengajuan.status]
+                            } text-white`}
+                          >
+                            {STATUS_LABELS[pengajuan.status]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(pengajuan.created_at), "dd MMM yyyy", {
                             locale: id,
-                          }
-                        )}
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {pengajuan.lokasi_musda}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={`${
-                            STATUS_COLORS[pengajuan.status]
-                          } text-white`}
-                        >
-                          {STATUS_LABELS[pengajuan.status]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(pengajuan.created_at), "dd MMM yyyy", {
-                          locale: id,
-                        })}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleViewDetail(pengajuan.id)}
-                        >
-                          <Eye className="mr-2 h-4 w-4" />
-                          Detail
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          })}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewDetail(pengajuan.id)}
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            Detail
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}
