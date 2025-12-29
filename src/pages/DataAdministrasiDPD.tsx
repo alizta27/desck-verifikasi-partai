@@ -17,160 +17,39 @@ import { LoadingScreen } from "@/components/ui/spinner";
 import { BankAccountUpload } from "@/components/dpd/BankAccountUpload";
 import { OfficeAddressProof } from "@/components/dpd/OfficeAddressProof";
 import { OfficeLegality } from "@/components/dpd/OfficeLegality";
-import { getSignedUrl } from "@/lib/storage";
 import { getOrganizationInfo, OrganizationInfo } from "@/lib/organization";
-
-interface BankAccountData {
-  nama_pemilik_rekening: string;
-  nama_bank: string;
-  nomor_rekening: string;
-  file_bukti_rekening: File | null;
-  file_bukti_rekening_url?: string;
-}
-
-interface OfficeAddressData {
-  provinsi: string;
-  kabupaten_kota: string;
-  kecamatan: string;
-  alamat_lengkap: string;
-  file_foto_kantor_depan: File | null;
-  file_foto_papan_nama: File | null;
-  file_foto_kantor_depan_url?: string;
-  file_foto_papan_nama_url?: string;
-}
-
-interface OfficeLegalityData {
-  jenis_dokumen: string;
-  file_dokumen_legalitas: File | null;
-  keterangan: string;
-  file_dokumen_legalitas_url?: string;
-}
+import { useAdministrativeData } from "@/hooks/useAdministrativeData";
+import { useFileOperations } from "@/hooks/useFileOperations";
+import type { OfficeAddressData } from "@/types/data-administrasi";
 
 const DataAdministrasiDPD = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [organizationInfo, setOrganizationInfo] = useState<OrganizationInfo>({
     tipe: "DPD",
     nama: "DPD",
     fullName: "DPD",
   });
 
-  const [bankAccountData, setBankAccountData] = useState<BankAccountData>({
-    nama_pemilik_rekening: "",
-    nama_bank: "",
-    nomor_rekening: "",
-    file_bukti_rekening: null,
-  });
+  const {
+    loading,
+    bankAccountData,
+    setBankAccountData,
+    officeAddressData,
+    setOfficeAddressData,
+    officeLegalityData,
+    setOfficeLegalityData,
+  } = useAdministrativeData();
 
-  const [officeAddressData, setOfficeAddressData] = useState<OfficeAddressData>(
-    {
-      provinsi: "",
-      kabupaten_kota: "",
-      kecamatan: "",
-      alamat_lengkap: "",
-      file_foto_kantor_depan: null,
-      file_foto_papan_nama: null,
-    }
-  );
-
-  const [officeLegalityData, setOfficeLegalityData] =
-    useState<OfficeLegalityData>({
-      jenis_dokumen: "",
-      file_dokumen_legalitas: null,
-      keterangan: "",
-    });
+  const { uploading, setUploading, uploadFile, deleteFile } =
+    useFileOperations();
 
   useEffect(() => {
-    loadExistingData();
     loadOrganizationInfo();
   }, []);
 
   const loadOrganizationInfo = async () => {
     const orgInfo = await getOrganizationInfo();
     setOrganizationInfo(orgInfo);
-  };
-
-  const loadExistingData = async () => {
-    try {
-      setLoading(true);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Load bank account data
-      const { data: bankData } = await supabase
-        .from("dpd_bank_account")
-        .select("*")
-        .eq("dpd_id", user.id)
-        .maybeSingle();
-
-      if (bankData) {
-        const signedUrl = await getSignedUrl(
-          "dpd-documents",
-          bankData.file_bukti_rekening
-        );
-        setBankAccountData({
-          nama_pemilik_rekening: bankData.nama_pemilik_rekening || "",
-          nama_bank: bankData.nama_bank || "",
-          nomor_rekening: bankData.nomor_rekening || "",
-          file_bukti_rekening: null,
-          file_bukti_rekening_url: signedUrl || "",
-        });
-      }
-
-      // Load office address data
-      const { data: officeData } = await supabase
-        .from("dpd_office_address")
-        .select("*")
-        .eq("dpd_id", user.id)
-        .maybeSingle();
-
-      if (officeData) {
-        const [signedUrlKantorDepan, signedUrlPapanNama] = await Promise.all([
-          getSignedUrl("dpd-documents", officeData.file_foto_kantor_depan),
-          getSignedUrl("dpd-documents", officeData.file_foto_papan_nama),
-        ]);
-
-        setOfficeAddressData({
-          provinsi: officeData.provinsi || "",
-          kabupaten_kota: officeData.kabupaten_kota || "",
-          kecamatan: officeData.kecamatan || "",
-          alamat_lengkap: officeData.alamat_lengkap || "",
-          file_foto_kantor_depan: null,
-          file_foto_papan_nama: null,
-          file_foto_kantor_depan_url: signedUrlKantorDepan || "",
-          file_foto_papan_nama_url: signedUrlPapanNama || "",
-        });
-      }
-
-      // Load office legality data
-      const { data: legalityData } = await supabase
-        .from("dpd_office_legality")
-        .select("*")
-        .eq("dpd_id", user.id)
-        .maybeSingle();
-
-      if (legalityData) {
-        const signedUrl = await getSignedUrl(
-          "dpd-documents",
-          legalityData.file_dokumen_legalitas
-        );
-
-        setOfficeLegalityData({
-          jenis_dokumen: legalityData.jenis_dokumen || "",
-          file_dokumen_legalitas: null,
-          keterangan: legalityData.keterangan || "",
-          file_dokumen_legalitas_url: signedUrl || "",
-        });
-      }
-    } catch (error) {
-      console.error("Error loading data:", error);
-      toast.error("Gagal memuat data");
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleBankAccountChange = (field: string, value: any) => {
@@ -188,42 +67,29 @@ const DataAdministrasiDPD = () => {
   const handleBankFileDelete = async () => {
     if (!bankAccountData.file_bukti_rekening_url) return;
 
-    try {
-      setUploading(true);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
-      const filePath = bankAccountData.file_bukti_rekening_url
-        .split("/")
-        .slice(-2)
-        .join("/");
+    const filePath = bankAccountData.file_bukti_rekening_url
+      .split("/")
+      .slice(-2)
+      .join("/");
 
-      const { error: storageError } = await supabase.storage
-        .from("dpd-documents")
-        .remove([filePath]);
+    const success = await deleteFile(
+      filePath,
+      "dpd_bank_account",
+      "file_bukti_rekening",
+      user.id
+    );
 
-      if (storageError) throw storageError;
-
-      const { error: dbError } = await supabase
-        .from("dpd_bank_account")
-        .update({ file_bukti_rekening: null })
-        .eq("dpd_id", user.id);
-
-      if (dbError) throw dbError;
-
+    if (success) {
       setBankAccountData((prev) => ({
         ...prev,
         file_bukti_rekening: null,
         file_bukti_rekening_url: undefined,
       }));
-
-      toast.success("File berhasil dihapus");
-    } catch (error) {
-      toast.error("Gagal menghapus file");
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -232,95 +98,56 @@ const DataAdministrasiDPD = () => {
     const fileUrl = officeAddressData[urlField];
     if (!fileUrl || typeof fileUrl !== "string") return;
 
-    try {
-      setUploading(true);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
-      const filePath = fileUrl.split("/").slice(-2).join("/");
+    const filePath = fileUrl.split("/").slice(-2).join("/");
 
-      const { error: storageError } = await supabase.storage
-        .from("dpd-documents")
-        .remove([filePath]);
+    const success = await deleteFile(
+      filePath,
+      "dpd_office_address",
+      field,
+      user.id
+    );
 
-      if (storageError) throw storageError;
-
-      const { error: dbError } = await supabase
-        .from("dpd_office_address")
-        .update({ [field]: null })
-        .eq("dpd_id", user.id);
-
-      if (dbError) throw dbError;
-
+    if (success) {
       setOfficeAddressData((prev) => ({
         ...prev,
         [field]: null,
         [urlField]: undefined,
       }));
-
-      toast.success("File berhasil dihapus");
-    } catch (error) {
-      toast.error("Gagal menghapus file");
-    } finally {
-      setUploading(false);
     }
   };
 
   const handleLegalityFileDelete = async () => {
     if (!officeLegalityData.file_dokumen_legalitas_url) return;
 
-    try {
-      setUploading(true);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
-      const filePath = officeLegalityData.file_dokumen_legalitas_url
-        .split("/")
-        .slice(-2)
-        .join("/");
+    const filePath = officeLegalityData.file_dokumen_legalitas_url
+      .split("/")
+      .slice(-2)
+      .join("/");
 
-      const { error: storageError } = await supabase.storage
-        .from("dpd-documents")
-        .remove([filePath]);
+    const success = await deleteFile(
+      filePath,
+      "dpd_office_legality",
+      "file_dokumen_legalitas",
+      user.id
+    );
 
-      if (storageError) throw storageError;
-
-      const { error: dbError } = await supabase
-        .from("dpd_office_legality")
-        .update({ file_dokumen_legalitas: null })
-        .eq("dpd_id", user.id);
-
-      if (dbError) throw dbError;
-
+    if (success) {
       setOfficeLegalityData((prev) => ({
         ...prev,
         file_dokumen_legalitas: null,
         file_dokumen_legalitas_url: undefined,
       }));
-
-      toast.success("File berhasil dihapus");
-    } catch (error) {
-      toast.error("Gagal menghapus file");
-    } finally {
-      setUploading(false);
     }
-  };
-
-  const uploadFile = async (file: File, userId: string): Promise<string> => {
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${userId}/${Date.now()}.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("dpd-documents")
-      .upload(fileName, file);
-
-    if (uploadError) throw uploadError;
-
-    return fileName;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -382,7 +209,8 @@ const DataAdministrasiDPD = () => {
       }
 
       // Upload office photos if new
-      let fotoKantorDepanUrl = officeAddressData.file_foto_kantor_depan_url || "";
+      let fotoKantorDepanUrl =
+        officeAddressData.file_foto_kantor_depan_url || "";
       if (officeAddressData.file_foto_kantor_depan) {
         fotoKantorDepanUrl = await uploadFile(
           officeAddressData.file_foto_kantor_depan,
@@ -399,8 +227,7 @@ const DataAdministrasiDPD = () => {
       }
 
       // Upload legality document if new
-      let legalityFileUrl =
-        officeLegalityData.file_dokumen_legalitas_url || "";
+      let legalityFileUrl = officeLegalityData.file_dokumen_legalitas_url || "";
       if (officeLegalityData.file_dokumen_legalitas) {
         legalityFileUrl = await uploadFile(
           officeLegalityData.file_dokumen_legalitas,
@@ -409,7 +236,7 @@ const DataAdministrasiDPD = () => {
       }
 
       // Save bank account data
-      const { error: bankError } = await supabase
+      const { error: bankError } = await (supabase as any)
         .from("dpd_bank_account")
         .upsert(
           {
@@ -427,7 +254,7 @@ const DataAdministrasiDPD = () => {
       if (bankError) throw bankError;
 
       // Save office address data
-      const { error: officeError } = await supabase
+      const { error: officeError } = await (supabase as any)
         .from("dpd_office_address")
         .upsert(
           {
@@ -447,7 +274,7 @@ const DataAdministrasiDPD = () => {
       if (officeError) throw officeError;
 
       // Save office legality data
-      const { error: legalityError } = await supabase
+      const { error: legalityError } = await (supabase as any)
         .from("dpd_office_legality")
         .upsert(
           {

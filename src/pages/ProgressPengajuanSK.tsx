@@ -14,70 +14,21 @@ import {
   ArrowLeft,
   FileText,
   CheckCircle2,
-  XCircle,
-  Clock,
   AlertCircle,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import hanuraLogo from "@/assets/hanura-logo.jpg";
-import type { Database } from "@/integrations/supabase/types";
 import { LoadingScreen } from "@/components/ui/spinner";
 import { getOrganizationInfo, OrganizationInfo } from "@/lib/organization";
-
-type PengajuanStatus = Database["public"]["Enums"]["pengajuan_status"];
-
-interface PengajuanSK {
-  id: string;
-  status: PengajuanStatus;
-  tanggal_musda: string;
-  lokasi_musda: string;
-  file_laporan_musda: string | null;
-  catatan_revisi: string | null;
-  verified_okk_at: string | null;
-  approved_sekjend_at: string | null;
-  approved_ketum_at: string | null;
-  sk_terbit_at: string | null;
-  created_at: string;
-}
-
-const STATUS_CONFIG: Record<
-  PengajuanStatus,
-  { label: string; color: string; icon: any }
-> = {
-  draft: { label: "Draft", color: "bg-gray-500", icon: FileText },
-  diupload: { label: "Diupload", color: "bg-blue-500", icon: Clock },
-  diverifikasi_okk: {
-    label: "Diverifikasi OKK",
-    color: "bg-yellow-500",
-    icon: Clock,
-  },
-  ditolak_okk: { label: "Ditolak OKK", color: "bg-red-500", icon: XCircle },
-  disetujui_sekjend: {
-    label: "Disetujui Sekjend",
-    color: "bg-green-500",
-    icon: CheckCircle2,
-  },
-  ditolak_sekjend: {
-    label: "Ditolak Sekjend",
-    color: "bg-red-500",
-    icon: XCircle,
-  },
-  disetujui_ketum: {
-    label: "Disetujui Ketum",
-    color: "bg-green-500",
-    icon: CheckCircle2,
-  },
-  ditolak_ketum: { label: "Ditolak Ketum", color: "bg-red-500", icon: XCircle },
-  sk_terbit: { label: "SK Terbit", color: "bg-primary", icon: CheckCircle2 },
-};
+import { usePengajuanData } from "@/hooks/usePengajuanData";
+import { getProgressValue, getStepStatus } from "@/lib/pengajuan-utils";
+import { STATUS_CONFIG } from "@/constants/pengajuan-status";
+import { TimelineStep } from "@/components/pengajuan/TimelineStep";
 
 const ProgressPengajuanSK = () => {
   const navigate = useNavigate();
-  const [pengajuan, setPengajuan] = useState<PengajuanSK | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { pengajuan, loading } = usePengajuanData();
   const [organizationInfo, setOrganizationInfo] = useState<OrganizationInfo>({
     tipe: "DPD",
     nama: "DPD",
@@ -85,110 +36,12 @@ const ProgressPengajuanSK = () => {
   });
 
   useEffect(() => {
-    loadPengajuan();
     loadOrganizationInfo();
   }, []);
 
   const loadOrganizationInfo = async () => {
     const orgInfo = await getOrganizationInfo();
     setOrganizationInfo(orgInfo);
-  };
-
-  const loadPengajuan = async () => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("User tidak terautentikasi");
-        navigate("/auth");
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("pengajuan_sk")
-        .select("*")
-        .eq("dpd_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (data) {
-        setPengajuan(data as PengajuanSK);
-      } else {
-        toast.info("Belum ada pengajuan SK");
-        navigate("/dashboard");
-      }
-    } catch (error) {
-      console.error("Error loading pengajuan:", error);
-      toast.error("Gagal memuat data pengajuan");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getProgressValue = (status: PengajuanStatus): number => {
-    const progress: Record<PengajuanStatus, number> = {
-      draft: 10,
-      diupload: 25,
-      diverifikasi_okk: 50,
-      ditolak_okk: 25,
-      disetujui_sekjend: 75,
-      ditolak_sekjend: 50,
-      disetujui_ketum: 90,
-      ditolak_ketum: 75,
-      sk_terbit: 100,
-    };
-    return progress[status] || 0;
-  };
-
-  const getStepStatus = (
-    step: string
-  ): "completed" | "current" | "pending" | "rejected" => {
-    if (!pengajuan) return "pending";
-
-    const { status } = pengajuan;
-
-    if (step === "upload") {
-      if (status === "draft") return "pending";
-      if (status === "diupload") return "current";
-      return "completed";
-    }
-
-    if (step === "okk") {
-      if (["draft", "diupload"].includes(status)) return "pending";
-      if (status === "ditolak_okk") return "rejected";
-      if (status === "diverifikasi_okk") return "current";
-      return "completed";
-    }
-
-    if (step === "sekjend") {
-      if (
-        ["draft", "diupload", "diverifikasi_okk", "ditolak_okk"].includes(
-          status
-        )
-      )
-        return "pending";
-      if (status === "ditolak_sekjend") return "rejected";
-      if (status === "disetujui_sekjend") return "current";
-      return "completed";
-    }
-
-    if (step === "ketum") {
-      if (!["disetujui_ketum", "ditolak_ketum", "sk_terbit"].includes(status))
-        return "pending";
-      if (status === "ditolak_ketum") return "rejected";
-      if (status === "disetujui_ketum") return "current";
-      return "completed";
-    }
-
-    if (step === "terbit") {
-      return status === "sk_terbit" ? "completed" : "pending";
-    }
-
-    return "pending";
   };
 
   const handleRevisi = () => {
@@ -303,157 +156,45 @@ const ProgressPengajuanSK = () => {
               <div className="border-t pt-4">
                 <h3 className="font-semibold mb-4">Timeline Proses</h3>
                 <div className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                        getStepStatus("upload") === "completed"
-                          ? "bg-primary text-white"
-                          : getStepStatus("upload") === "current"
-                          ? "bg-primary/20 text-primary"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      <FileText className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">Dokumen Diupload</p>
-                      <p className="text-sm text-muted-foreground">
-                        {pengajuan.created_at
-                          ? format(new Date(pengajuan.created_at), "PPP", {
-                              locale: id,
-                            })
-                          : "-"}
-                      </p>
-                    </div>
-                    {getStepStatus("upload") === "completed" && (
-                      <CheckCircle2 className="h-5 w-5 text-success" />
-                    )}
-                  </div>
+                  <TimelineStep
+                    icon={FileText}
+                    label="Dokumen Diupload"
+                    date={pengajuan.created_at}
+                    status={getStepStatus("upload", pengajuan)}
+                    emptyDateText="-"
+                  />
 
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                        getStepStatus("okk") === "completed"
-                          ? "bg-primary text-white"
-                          : getStepStatus("okk") === "current"
-                          ? "bg-primary/20 text-primary"
-                          : getStepStatus("okk") === "rejected"
-                          ? "bg-destructive text-white"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      <CheckCircle2 className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">Verifikasi OKK</p>
-                      <p className="text-sm text-muted-foreground">
-                        {pengajuan.verified_okk_at
-                          ? format(new Date(pengajuan.verified_okk_at), "PPP", {
-                              locale: id,
-                            })
-                          : "Menunggu verifikasi"}
-                      </p>
-                    </div>
-                    {getStepStatus("okk") === "completed" && (
-                      <CheckCircle2 className="h-5 w-5 text-success" />
-                    )}
-                    {getStepStatus("okk") === "rejected" && (
-                      <XCircle className="h-5 w-5 text-destructive" />
-                    )}
-                  </div>
+                  <TimelineStep
+                    icon={CheckCircle2}
+                    label="Verifikasi OKK"
+                    date={pengajuan.verified_okk_at}
+                    status={getStepStatus("okk", pengajuan)}
+                    emptyDateText="Menunggu verifikasi"
+                  />
 
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                        getStepStatus("sekjend") === "completed"
-                          ? "bg-primary text-white"
-                          : getStepStatus("sekjend") === "current"
-                          ? "bg-primary/20 text-primary"
-                          : getStepStatus("sekjend") === "rejected"
-                          ? "bg-destructive text-white"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      <CheckCircle2 className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">Persetujuan Sekjend</p>
-                      <p className="text-sm text-muted-foreground">
-                        {pengajuan.approved_sekjend_at
-                          ? format(
-                              new Date(pengajuan.approved_sekjend_at),
-                              "PPP",
-                              { locale: id }
-                            )
-                          : "Menunggu persetujuan"}
-                      </p>
-                    </div>
-                    {getStepStatus("sekjend") === "completed" && (
-                      <CheckCircle2 className="h-5 w-5 text-success" />
-                    )}
-                    {getStepStatus("sekjend") === "rejected" && (
-                      <XCircle className="h-5 w-5 text-destructive" />
-                    )}
-                  </div>
+                  <TimelineStep
+                    icon={CheckCircle2}
+                    label="Persetujuan Sekjend"
+                    date={pengajuan.approved_sekjend_at}
+                    status={getStepStatus("sekjend", pengajuan)}
+                    emptyDateText="Menunggu persetujuan"
+                  />
 
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                        getStepStatus("ketum") === "completed"
-                          ? "bg-primary text-white"
-                          : getStepStatus("ketum") === "current"
-                          ? "bg-primary/20 text-primary"
-                          : getStepStatus("ketum") === "rejected"
-                          ? "bg-destructive text-white"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      <CheckCircle2 className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">Persetujuan Ketum</p>
-                      <p className="text-sm text-muted-foreground">
-                        {pengajuan.approved_ketum_at
-                          ? format(
-                              new Date(pengajuan.approved_ketum_at),
-                              "PPP",
-                              { locale: id }
-                            )
-                          : "Menunggu persetujuan"}
-                      </p>
-                    </div>
-                    {getStepStatus("ketum") === "completed" && (
-                      <CheckCircle2 className="h-5 w-5 text-success" />
-                    )}
-                    {getStepStatus("ketum") === "rejected" && (
-                      <XCircle className="h-5 w-5 text-destructive" />
-                    )}
-                  </div>
+                  <TimelineStep
+                    icon={CheckCircle2}
+                    label="Persetujuan Ketum"
+                    date={pengajuan.approved_ketum_at}
+                    status={getStepStatus("ketum", pengajuan)}
+                    emptyDateText="Menunggu persetujuan"
+                  />
 
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                        getStepStatus("terbit") === "completed"
-                          ? "bg-success text-white"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      <FileText className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">SK Terbit</p>
-                      <p className="text-sm text-muted-foreground">
-                        {pengajuan.sk_terbit_at
-                          ? format(new Date(pengajuan.sk_terbit_at), "PPP", {
-                              locale: id,
-                            })
-                          : "Belum terbit"}
-                      </p>
-                    </div>
-                    {getStepStatus("terbit") === "completed" && (
-                      <CheckCircle2 className="h-5 w-5 text-success" />
-                    )}
-                  </div>
+                  <TimelineStep
+                    icon={FileText}
+                    label="SK Terbit"
+                    date={pengajuan.sk_terbit_at}
+                    status={getStepStatus("terbit", pengajuan)}
+                    emptyDateText="Belum terbit"
+                  />
                 </div>
               </div>
 
