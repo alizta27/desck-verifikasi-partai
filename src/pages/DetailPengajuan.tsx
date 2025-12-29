@@ -13,18 +13,12 @@ import type {
   PengajuanDetail,
   PengajuanStatus,
   AppRole,
-  BankAccountData,
-  OfficeAddressData,
-  OfficeLegalityData,
   PengurusData,
 } from "@/types/detail-pengajuan";
 
 // Import new components
 import { PengajuanInfoCard } from "@/components/detail-pengajuan/PengajuanInfoCard";
 import { PengurusTable } from "@/components/detail-pengajuan/PengurusTable";
-import { BankAccountCard } from "@/components/detail-pengajuan/administrative/BankAccountCard";
-import { OfficeAddressCard } from "@/components/detail-pengajuan/administrative/OfficeAddressCard";
-import { OfficeLegalityCard } from "@/components/detail-pengajuan/administrative/OfficeLegalityCard";
 import { VerificationActions } from "@/components/detail-pengajuan/actions/VerificationActions";
 import { PublishSKCard } from "@/components/detail-pengajuan/actions/PublishSKCard";
 import { RevisionNoteCard } from "@/components/detail-pengajuan/actions/RevisionNoteCard";
@@ -40,9 +34,6 @@ const DetailPengajuan = () => {
   const [catatanRevisi, setCatatanRevisi] = useState("");
   const [showPdfDialog, setShowPdfDialog] = useState(false);
   const [pdfUrl, setPdfUrl] = useState("");
-  const [bankAccount, setBankAccount] = useState<BankAccountData | null>(null);
-  const [officeAddress, setOfficeAddress] = useState<OfficeAddressData | null>(null);
-  const [officeLegality, setOfficeLegality] = useState<OfficeLegalityData | null>(null);
 
   useEffect(() => {
     loadUserRole();
@@ -55,12 +46,6 @@ const DetailPengajuan = () => {
     }
   }, [userRole, id]);
 
-  useEffect(() => {
-    if (pengajuan?.dpd_id) {
-      loadAdministrativeData(pengajuan.dpd_id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pengajuan?.dpd_id]);
 
   const loadUserRole = async () => {
     try {
@@ -154,40 +139,6 @@ const DetailPengajuan = () => {
     }
   };
 
-  const loadAdministrativeData = async (dpdId: string) => {
-    try {
-      // Load bank account
-      const { data: bankData } = await (supabase as any)
-        .from("dpd_bank_account")
-        .select("*")
-        .eq("dpd_id", dpdId)
-        .maybeSingle();
-
-      if (bankData) setBankAccount(bankData as unknown as BankAccountData);
-
-      // Load office address
-      const { data: officeData } = await (supabase as any)
-        .from("dpd_office_address")
-        .select("*")
-        .eq("dpd_id", dpdId)
-        .maybeSingle();
-
-      if (officeData)
-        setOfficeAddress(officeData as unknown as OfficeAddressData);
-
-      // Load office legality
-      const { data: legalityData } = await (supabase as any)
-        .from("dpd_office_legality")
-        .select("*")
-        .eq("dpd_id", dpdId)
-        .maybeSingle();
-
-      if (legalityData)
-        setOfficeLegality(legalityData as unknown as OfficeLegalityData);
-    } catch (error) {
-      console.error("Error loading administrative data:", error);
-    }
-  };
 
   const handleVerifikasi = async (approved: boolean) => {
     if (!approved && !catatanRevisi.trim()) {
@@ -389,12 +340,6 @@ const DetailPengajuan = () => {
               pengurusList={pengurusList}
               onViewPdf={handleViewPdf}
             />
-
-            <BankAccountCard bankAccount={bankAccount} />
-
-            <OfficeAddressCard officeAddress={officeAddress} />
-
-            <OfficeLegalityCard officeLegality={officeLegality} />
           </div>
 
           <div className="space-y-6">

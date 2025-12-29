@@ -21,7 +21,8 @@ import { StatusBadge } from "@/components/approval/StatusBadge";
 import { useAdministrasiList } from "@/hooks/useAdministrasiList";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Search, Eye, RefreshCw } from "lucide-react";
+import { Search, Eye, RefreshCw, ArrowLeft } from "lucide-react";
+import hanuraLogo from "@/assets/hanura-logo.jpg";
 
 export default function AdminReviewAdministrasi() {
   const navigate = useNavigate();
@@ -40,18 +41,44 @@ export default function AdminReviewAdministrasi() {
   };
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Review Administrasi DPD</h1>
-          <p className="text-muted-foreground">
-            Verifikasi data administrasi yang disubmit oleh DPD
-          </p>
+    <div className="min-h-screen bg-gradient-soft">
+      <header className="bg-card border-b shadow-soft sticky top-0 z-10">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center gap-4">
+            <img src={hanuraLogo} alt="HANURA" className="h-12 w-auto" />
+            <div>
+              <h1 className="text-xl font-bold text-foreground">
+                H-Gate050 Desk Verifikasi Partai Hanura
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Review Administrasi
+              </p>
+            </div>
+          </div>
         </div>
-        <Button onClick={refresh} variant="outline" size="icon">
-          <RefreshCw className="h-4 w-4" />
-        </Button>
-      </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigate("/dashboard-admin")}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <h2 className="text-3xl font-bold">Review Administrasi</h2>
+              <p className="text-muted-foreground">
+                Verifikasi data administrasi yang disubmit oleh DPD/DPC/PAC
+              </p>
+            </div>
+          </div>
+          <Button onClick={refresh} variant="outline" size="icon">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
 
       <Card>
         <CardHeader>
@@ -154,6 +181,7 @@ export default function AdminReviewAdministrasi() {
           )}
         </CardContent>
       </Card>
+      </main>
     </div>
   );
 }

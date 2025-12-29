@@ -169,34 +169,37 @@ const DashboardDPD = () => {
     return 1;
   }, [dataMusda]);
 
-  const steps = useMemo(() => [
-    {
-      number: 1,
-      title: "Upload Laporan MUSDA",
-      description:
-        "Upload file PDF laporan hasil MUSDA dan informasi pelaksanaan",
-      icon: FileText,
-      completed: Boolean(currentStepFromData > 1),
-      route: "/upload-laporan",
-    },
-    {
-      number: 2,
-      title: "Input Data Pengurus",
-      description: `Isi data lengkap pengurus ${organizationInfo.tipe} beserta dokumen pendukung`,
-      icon: Users,
-      completed: Boolean(currentStepFromData > 2),
-      route: "/input-pengurus",
-    },
-    {
-      number: 3,
-      title: "Tracking Progress SK",
-      description:
-        "Pantau status persetujuan SK dari OKK, Sekjend, hingga Ketum",
-      icon: CheckCircle2,
-      completed: Boolean(currentStepFromData > 3),
-      route: "/progress-sk",
-    },
-  ], [currentStepFromData, organizationInfo.tipe]);
+  const steps = useMemo(
+    () => [
+      {
+        number: 1,
+        title: "Upload Laporan MUSDA",
+        description:
+          "Upload file PDF laporan hasil MUSDA dan informasi pelaksanaan",
+        icon: FileText,
+        completed: Boolean(currentStepFromData > 1),
+        route: "/upload-laporan",
+      },
+      {
+        number: 2,
+        title: "Input Data Pengurus",
+        description: `Isi data lengkap pengurus ${organizationInfo.tipe} beserta dokumen pendukung`,
+        icon: Users,
+        completed: Boolean(currentStepFromData > 2),
+        route: "/input-pengurus",
+      },
+      {
+        number: 3,
+        title: "Tracking Progress SK",
+        description:
+          "Pantau status persetujuan SK dari OKK, Sekjend, hingga Ketum",
+        icon: CheckCircle2,
+        completed: Boolean(currentStepFromData > 3),
+        route: "/progress-sk",
+      },
+    ],
+    [currentStepFromData, organizationInfo.tipe]
+  );
 
   const stepProgressLimit = currentStepFromData === 4 ? 100 : 90;
   const progressPercentage = (currentStep / steps.length) * stepProgressLimit;
@@ -230,7 +233,9 @@ const DashboardDPD = () => {
                 <h1 className="text-xl font-bold text-foreground">
                   H-Gate050 Desk Verifikasi Partai Hanura
                 </h1>
-                <p className="text-sm text-muted-foreground">Dashboard {organizationInfo.nama}</p>
+                <p className="text-sm text-muted-foreground">
+                  Dashboard {organizationInfo.nama}
+                </p>
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={handleLogout}>
@@ -278,15 +283,21 @@ const DashboardDPD = () => {
               <div className="space-y-4">
                 <div className="grid gap-3 text-sm">
                   <div className="flex items-center gap-2">
-                    <div className={`h-2 w-2 rounded-full ${hasAdministrativeData ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                    <div
+                      className={`h-2 w-2 rounded-full ${
+                        hasAdministrativeData ? "bg-green-500" : "bg-yellow-500"
+                      }`}
+                    />
                     <span className="text-muted-foreground">
-                      Status: {hasAdministrativeData ? 'Lengkap' : 'Belum Lengkap'}
+                      Status:{" "}
+                      {hasAdministrativeData ? "Lengkap" : "Belum Lengkap"}
                     </span>
                   </div>
                   <p className="text-muted-foreground">
-                    • Upload bukti rekening organisasi<br />
-                    • Input alamat & foto sekretariat<br />
-                    • Upload dokumen legalitas kantor
+                    • Upload bukti rekening organisasi
+                    <br />
+                    • Input alamat & foto sekretariat
+                    <br />• Upload dokumen legalitas kantor
                   </p>
                 </div>
                 <Button

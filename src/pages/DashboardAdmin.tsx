@@ -25,7 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LogOut, Search, Filter, Eye } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LogOut, Search, Filter, Eye, FileText, Building2, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -33,6 +34,8 @@ import { id } from "date-fns/locale";
 import hanuraLogo from "@/assets/hanura-logo.jpg";
 import type { Database } from "@/integrations/supabase/types";
 import { LoadingScreen } from "@/components/ui/spinner";
+import { useAdministrasiList } from "@/hooks/useAdministrasiList";
+import { StatusBadge } from "@/components/approval/StatusBadge";
 
 type PengajuanStatus = Database["public"]["Enums"]["pengajuan_status"];
 type AppRole = Database["public"]["Enums"]["app_role"];
@@ -87,6 +90,22 @@ const DashboardAdmin = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterProvinsi, setFilterProvinsi] = useState<string>("all");
+  const [orgTypeFilter, setOrgTypeFilter] = useState<string>("dpd");
+
+  // Administrative verification data
+  const {
+    data: administrasiData,
+    loading: administrasiLoading,
+    search: administrasiSearch,
+    setSearch: setAdministrasiSearch,
+    statusFilter: administrasiStatusFilter,
+    setStatusFilter: setAdministrasiStatusFilter,
+    currentPage: administrasiCurrentPage,
+    setCurrentPage: setAdministrasiCurrentPage,
+    totalPages: administrasiTotalPages,
+    itemsPerPage: administrasiItemsPerPage,
+    refresh: refreshAdministrasi,
+  } = useAdministrasiList();
 
   useEffect(() => {
     loadUserRole();
@@ -157,7 +176,7 @@ const DashboardAdmin = () => {
 
       if (error) throw error;
       console.log({ data });
-      setPengajuanList((data as any) as PengajuanWithProfile[]);
+      setPengajuanList(data as any as PengajuanWithProfile[]);
     } catch (error) {
       console.error("Error loading pengajuan:", error);
       toast.error("Gagal memuat data pengajuan");
@@ -227,7 +246,7 @@ const DashboardAdmin = () => {
   if (loading) {
     return <LoadingScreen />;
   }
-
+  console.log({ loading });
   return (
     <div className="min-h-screen bg-gradient-soft">
       <header className="bg-card border-b shadow-soft sticky top-0 z-10">
@@ -253,193 +272,448 @@ const DashboardAdmin = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <div className="grid gap-6 md:grid-cols-4 mb-8">
-          <Card className="shadow-medium">
-            <CardHeader className="pb-3">
-              <CardDescription>Total Pengajuan</CardDescription>
-              <CardTitle className="text-3xl">{stats.total}</CardTitle>
-            </CardHeader>
-          </Card>
+        <Tabs defaultValue="pengajuan-sk" className="space-y-6">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
+            <TabsTrigger value="pengajuan-sk" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Verifikasi Pengajuan SK
+            </TabsTrigger>
+            <TabsTrigger value="administrasi" className="gap-2">
+              <Building2 className="h-4 w-4" />
+              Verifikasi Administrasi
+            </TabsTrigger>
+          </TabsList>
 
-          <Card className="shadow-medium">
-            <CardHeader className="pb-3">
-              <CardDescription>Menunggu Verifikasi</CardDescription>
-              <CardTitle className="text-3xl text-blue-500">
-                {stats.menunggu}
-              </CardTitle>
-            </CardHeader>
-          </Card>
+          <TabsContent value="pengajuan-sk" className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-4">
+              <Card className="shadow-medium">
+                <CardHeader className="pb-3">
+                  <CardDescription>Total Pengajuan</CardDescription>
+                  <CardTitle className="text-3xl">{stats.total}</CardTitle>
+                </CardHeader>
+              </Card>
 
-          <Card className="shadow-medium">
-            <CardHeader className="pb-3">
-              <CardDescription>Sedang Diproses</CardDescription>
-              <CardTitle className="text-3xl text-yellow-500">
-                {stats.diproses}
-              </CardTitle>
-            </CardHeader>
-          </Card>
+              <Card className="shadow-medium">
+                <CardHeader className="pb-3">
+                  <CardDescription>Menunggu Verifikasi</CardDescription>
+                  <CardTitle className="text-3xl text-blue-500">
+                    {stats.menunggu}
+                  </CardTitle>
+                </CardHeader>
+              </Card>
 
-          <Card className="shadow-medium">
-            <CardHeader className="pb-3">
-              <CardDescription>SK Terbit</CardDescription>
-              <CardTitle className="text-3xl text-success">
-                {stats.selesai}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
+              <Card className="shadow-medium">
+                <CardHeader className="pb-3">
+                  <CardDescription>Sedang Diproses</CardDescription>
+                  <CardTitle className="text-3xl text-yellow-500">
+                    {stats.diproses}
+                  </CardTitle>
+                </CardHeader>
+              </Card>
 
-        <Card className="shadow-large">
-          <CardHeader>
-            <CardTitle>Daftar Pengajuan SK</CardTitle>
-            <CardDescription>
-              Kelola dan verifikasi pengajuan SK dari seluruh organisasi (DPD, DPC, PAC)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Cari berdasarkan nama DPD, provinsi, atau lokasi..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="w-[180px]">
-                    <Filter className="mr-2 h-4 w-4" />
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Status</SelectItem>
-                    <SelectItem value="diupload">Diupload</SelectItem>
-                    <SelectItem value="diverifikasi_okk">
-                      Diverifikasi OKK
-                    </SelectItem>
-                    <SelectItem value="disetujui_sekjend">
-                      Disetujui Sekjend
-                    </SelectItem>
-                    <SelectItem value="disetujui_ketum">
-                      Disetujui Ketum
-                    </SelectItem>
-                    <SelectItem value="sk_terbit">SK Terbit</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={filterProvinsi}
-                  onValueChange={setFilterProvinsi}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <Filter className="mr-2 h-4 w-4" />
-                    <SelectValue placeholder="Provinsi" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Provinsi</SelectItem>
-                    {uniqueProvinsi.map((prov) => (
-                      <SelectItem key={prov} value={prov}>
-                        {prov}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Card className="shadow-medium">
+                <CardHeader className="pb-3">
+                  <CardDescription>SK Terbit</CardDescription>
+                  <CardTitle className="text-3xl text-success">
+                    {stats.selesai}
+                  </CardTitle>
+                </CardHeader>
+              </Card>
             </div>
 
-            {filteredList.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">
-                  Tidak ada data pengajuan
-                </p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tipe</TableHead>
-                    <TableHead>Organisasi</TableHead>
-                    <TableHead>Tanggal MUSDA</TableHead>
-                    <TableHead>Lokasi</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Diajukan</TableHead>
-                    <TableHead>Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredList.map((pengajuan) => {
-                    const tipe = pengajuan.profiles?.tipe_organisasi?.toUpperCase() || "DPD";
-                    let orgName = "";
+            <Card className="shadow-large">
+              <CardHeader>
+                <CardTitle>Daftar Pengajuan SK</CardTitle>
+                <CardDescription>
+                  Kelola dan verifikasi pengajuan SK dari seluruh organisasi
+                  (DPD, DPC, PAC)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col md:flex-row gap-4 mb-6">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Cari berdasarkan nama DPD, provinsi, atau lokasi..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
 
-                    if (pengajuan.profiles?.tipe_organisasi === "dpd") {
-                      orgName = `DPD ${pengajuan.profiles?.provinsi || ""}`;
-                    } else if (pengajuan.profiles?.tipe_organisasi === "dpc") {
-                      orgName = `DPC ${pengajuan.profiles?.kabupaten_kota || ""}`;
-                    } else if (pengajuan.profiles?.tipe_organisasi === "pac") {
-                      orgName = `PAC Kec. ${pengajuan.profiles?.kecamatan || ""}`;
-                    } else {
-                      orgName = pengajuan.profiles?.provinsi || "-";
-                    }
+                  <div className="flex gap-2">
+                    <Select
+                      value={filterStatus}
+                      onValueChange={setFilterStatus}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <Filter className="mr-2 h-4 w-4" />
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Status</SelectItem>
+                        <SelectItem value="diupload">Diupload</SelectItem>
+                        <SelectItem value="diverifikasi_okk">
+                          Diverifikasi OKK
+                        </SelectItem>
+                        <SelectItem value="disetujui_sekjend">
+                          Disetujui Sekjend
+                        </SelectItem>
+                        <SelectItem value="disetujui_ketum">
+                          Disetujui Ketum
+                        </SelectItem>
+                        <SelectItem value="sk_terbit">SK Terbit</SelectItem>
+                      </SelectContent>
+                    </Select>
 
-                    return (
-                      <TableRow key={pengajuan.id}>
-                        <TableCell>
-                          <Badge variant="outline" className="font-semibold">
-                            {tipe}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {orgName}
-                        </TableCell>
-                        <TableCell>
-                          {format(
-                            new Date(pengajuan.tanggal_musda),
-                            "dd MMM yyyy",
-                            {
-                              locale: id,
-                            }
-                          )}
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate">
-                          {pengajuan.lokasi_musda}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            className={`${
-                              STATUS_COLORS[pengajuan.status]
-                            } text-white`}
-                          >
-                            {STATUS_LABELS[pengajuan.status]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(pengajuan.created_at), "dd MMM yyyy", {
-                            locale: id,
-                          })}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleViewDetail(pengajuan.id)}
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            Detail
-                          </Button>
-                        </TableCell>
+                    <Select
+                      value={filterProvinsi}
+                      onValueChange={setFilterProvinsi}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <Filter className="mr-2 h-4 w-4" />
+                        <SelectValue placeholder="Provinsi" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Provinsi</SelectItem>
+                        {uniqueProvinsi.map((prov) => (
+                          <SelectItem key={prov} value={prov}>
+                            {prov}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {filteredList.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">
+                      Tidak ada data pengajuan
+                    </p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tipe</TableHead>
+                        <TableHead>Organisasi</TableHead>
+                        <TableHead>Tanggal MUSDA</TableHead>
+                        <TableHead>Lokasi</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Diajukan</TableHead>
+                        <TableHead>Aksi</TableHead>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredList.map((pengajuan) => {
+                        const tipe =
+                          pengajuan.profiles?.tipe_organisasi?.toUpperCase() ||
+                          "DPD";
+                        let orgName = "";
+
+                        if (pengajuan.profiles?.tipe_organisasi === "dpd") {
+                          orgName = `DPD ${pengajuan.profiles?.provinsi || ""}`;
+                        } else if (
+                          pengajuan.profiles?.tipe_organisasi === "dpc"
+                        ) {
+                          orgName = `DPC ${
+                            pengajuan.profiles?.kabupaten_kota || ""
+                          }`;
+                        } else if (
+                          pengajuan.profiles?.tipe_organisasi === "pac"
+                        ) {
+                          orgName = `PAC Kec. ${
+                            pengajuan.profiles?.kecamatan || ""
+                          }`;
+                        } else {
+                          orgName = pengajuan.profiles?.provinsi || "-";
+                        }
+
+                        return (
+                          <TableRow key={pengajuan.id}>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className="font-semibold"
+                              >
+                                {tipe}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {orgName}
+                            </TableCell>
+                            <TableCell>
+                              {format(
+                                new Date(pengajuan.tanggal_musda),
+                                "dd MMM yyyy",
+                                {
+                                  locale: id,
+                                }
+                              )}
+                            </TableCell>
+                            <TableCell className="max-w-[200px] truncate">
+                              {pengajuan.lokasi_musda}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                className={`${
+                                  STATUS_COLORS[pengajuan.status]
+                                } text-white`}
+                              >
+                                {STATUS_LABELS[pengajuan.status]}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {format(
+                                new Date(pengajuan.created_at),
+                                "dd MMM yyyy",
+                                {
+                                  locale: id,
+                                }
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleViewDetail(pengajuan.id)}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                Detail
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="administrasi" className="space-y-6">
+            <Card className="shadow-medium">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Filter & Pencarian</CardTitle>
+                    <CardDescription>
+                      Cari dan filter data administrasi organisasi
+                    </CardDescription>
+                  </div>
+                  <Button
+                    onClick={refreshAdministrasi}
+                    variant="outline"
+                    size="icon"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Cari nama, provinsi, atau kabupaten/kota..."
+                      value={administrasiSearch}
+                      onChange={(e) => setAdministrasiSearch(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Select
+                      value={orgTypeFilter}
+                      onValueChange={setOrgTypeFilter}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <Filter className="mr-2 h-4 w-4" />
+                        <SelectValue placeholder="Tipe Organisasi" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="dpd">DPD</SelectItem>
+                        <SelectItem value="dpc">DPC</SelectItem>
+                        <SelectItem value="pac">PAC</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={administrasiStatusFilter}
+                      onValueChange={setAdministrasiStatusFilter}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <Filter className="mr-2 h-4 w-4" />
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Status</SelectItem>
+                        <SelectItem value="all_approved">
+                          All Approved
+                        </SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="has_rejection">
+                          Has Rejection
+                        </SelectItem>
+                        <SelectItem value="incomplete">Incomplete</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-large">
+              <CardHeader>
+                <CardTitle>
+                  Daftar {orgTypeFilter.toUpperCase()} - Verifikasi
+                  Administrasi
+                </CardTitle>
+                <CardDescription>
+                  Kelola dan verifikasi data administrasi dari{" "}
+                  {orgTypeFilter.toUpperCase()}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                {administrasiLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : administrasiData.filter((item) => {
+                    // Filter by organization type
+                    const nameLower = item.nama_dpd.toLowerCase();
+                    if (orgTypeFilter === "dpd") {
+                      return nameLower.startsWith("dpd");
+                    } else if (orgTypeFilter === "dpc") {
+                      return nameLower.startsWith("dpc");
+                    } else if (orgTypeFilter === "pac") {
+                      return nameLower.startsWith("pac");
+                    }
+                    return true;
+                  }).length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">
+                      Tidak ada data {orgTypeFilter.toUpperCase()} ditemukan
+                    </p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nama {orgTypeFilter.toUpperCase()}</TableHead>
+                        <TableHead>Provinsi</TableHead>
+                        <TableHead>Kabupaten/Kota</TableHead>
+                        <TableHead className="text-center">Rekening</TableHead>
+                        <TableHead className="text-center">Alamat</TableHead>
+                        <TableHead className="text-center">Legalitas</TableHead>
+                        <TableHead className="text-center">Overall</TableHead>
+                        <TableHead>Last Updated</TableHead>
+                        <TableHead className="text-center">Aksi</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {administrasiData
+                        .filter((item) => {
+                          // Filter by organization type
+                          const nameLower = item.nama_dpd.toLowerCase();
+                          if (orgTypeFilter === "dpd") {
+                            return nameLower.startsWith("dpd");
+                          } else if (orgTypeFilter === "dpc") {
+                            return nameLower.startsWith("dpc");
+                          } else if (orgTypeFilter === "pac") {
+                            return nameLower.startsWith("pac");
+                          }
+                          return true;
+                        })
+                        .map((item) => (
+                          <TableRow key={item.dpd_id}>
+                            <TableCell className="font-medium">
+                              {item.nama_dpd}
+                            </TableCell>
+                            <TableCell>{item.provinsi}</TableCell>
+                            <TableCell>{item.kabupaten_kota}</TableCell>
+                            <TableCell className="text-center">
+                              <StatusBadge
+                                status={item.bank_status}
+                                type="approval"
+                              />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <StatusBadge
+                                status={item.office_status}
+                                type="approval"
+                              />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <StatusBadge
+                                status={item.legality_status}
+                                type="approval"
+                              />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <StatusBadge
+                                status={item.overall_status}
+                                type="overall"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              {format(new Date(item.last_updated), "PPp", {
+                                locale: id,
+                              })}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  navigate(
+                                    `/admin/review-administrasi/${item.dpd_id}`
+                                  )
+                                }
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                Detail
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                )}
+
+                {!administrasiLoading && administrasiData.length > 0 && (
+                  <div className="flex items-center justify-between px-6 py-4 border-t">
+                    <div className="text-sm text-muted-foreground">
+                      Halaman {administrasiCurrentPage} dari {administrasiTotalPages} ({administrasiData.length} data dari {administrasiItemsPerPage} per halaman)
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAdministrasiCurrentPage(administrasiCurrentPage - 1)}
+                        disabled={administrasiCurrentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        Sebelumnya
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAdministrasiCurrentPage(administrasiCurrentPage + 1)}
+                        disabled={administrasiCurrentPage === administrasiTotalPages}
+                      >
+                        Selanjutnya
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
