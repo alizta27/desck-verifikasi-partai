@@ -13,6 +13,8 @@ import ProgressPengajuanSK from "./pages/ProgressPengajuanSK";
 import DataAdministrasiDPD from "./pages/DataAdministrasiDPD";
 import DashboardAdmin from "./pages/DashboardAdmin";
 import DetailPengajuan from "./pages/DetailPengajuan";
+import AdminReviewAdministrasi from "./pages/AdminReviewAdministrasi";
+import AdminReviewAdministrasiDetail from "./pages/AdminReviewAdministrasiDetail";
 import NotFound from "./pages/NotFound";
 import AuthAdmin from "./pages/AuthAdmin";
 
@@ -81,6 +83,22 @@ const App = () => (
             element={
               <ProtectedRoute requireAdmin={true}>
                 <DetailPengajuan />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/review-administrasi"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <AdminReviewAdministrasi />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/review-administrasi/:dpdId"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <AdminReviewAdministrasiDetail />
               </ProtectedRoute>
             }
           />

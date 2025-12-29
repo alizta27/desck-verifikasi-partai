@@ -8,13 +8,14 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { FileText, Users, CheckCircle2, LogOut, Building2 } from "lucide-react";
+import { FileText, Users, CheckCircle2, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import hanuraLogo from "@/assets/hanura-logo.jpg";
 import { checkAuth } from "@/lib/auth";
 import { LoadingScreen } from "@/components/ui/spinner";
+import { ApprovalStatusCard } from "@/components/approval/ApprovalStatusCard";
 
 const DashboardDPD = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -263,45 +264,42 @@ const DashboardDPD = () => {
         </Card>
 
         {/* Data Administrasi Section (Terpisah dari flow MUSDA) */}
-        <Card className="mb-8 shadow-medium border-2 border-primary/20">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                <Building2 className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <CardTitle>Data Administrasi {organizationInfo.tipe}</CardTitle>
-                <CardDescription>
-                  Kelengkapan data organisasi (dapat diisi kapan saja)
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid gap-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className={`h-2 w-2 rounded-full ${hasAdministrativeData ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                  <span className="text-muted-foreground">
-                    Status: {hasAdministrativeData ? 'Lengkap' : 'Belum Lengkap'}
-                  </span>
+        <div className="mb-8 grid gap-6 md:grid-cols-2">
+          <ApprovalStatusCard />
+
+          <Card className="shadow-medium border-2 border-primary/20">
+            <CardHeader>
+              <CardTitle>Kelengkapan Data Administrasi</CardTitle>
+              <CardDescription>
+                Input data organisasi (dapat diisi kapan saja)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid gap-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className={`h-2 w-2 rounded-full ${hasAdministrativeData ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                    <span className="text-muted-foreground">
+                      Status: {hasAdministrativeData ? 'Lengkap' : 'Belum Lengkap'}
+                    </span>
+                  </div>
+                  <p className="text-muted-foreground">
+                    • Upload bukti rekening organisasi<br />
+                    • Input alamat & foto sekretariat<br />
+                    • Upload dokumen legalitas kantor
+                  </p>
                 </div>
-                <p className="text-muted-foreground">
-                  • Upload bukti rekening organisasi<br />
-                  • Input alamat & foto sekretariat<br />
-                  • Upload dokumen legalitas kantor
-                </p>
+                <Button
+                  onClick={() => navigate("/data-administrasi")}
+                  variant={hasAdministrativeData ? "outline" : "default"}
+                  className="w-full"
+                >
+                  {hasAdministrativeData ? "Lihat/Edit Data" : "Lengkapi Data"}
+                </Button>
               </div>
-              <Button
-                onClick={() => navigate("/data-administrasi")}
-                variant={hasAdministrativeData ? "outline" : "default"}
-                className="w-full"
-              >
-                {hasAdministrativeData ? "Lihat/Edit Data" : "Lengkapi Data"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Steps Grid */}
         <div className="grid gap-6 md:grid-cols-3">
